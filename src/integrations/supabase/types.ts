@@ -21,6 +21,7 @@ export type Database = {
           diet_plan: Json | null
           id: string
           motivation_quote: string | null
+          profile_id: string | null
           user_id: string
           workout_plan: Json | null
         }
@@ -30,6 +31,7 @@ export type Database = {
           diet_plan?: Json | null
           id?: string
           motivation_quote?: string | null
+          profile_id?: string | null
           user_id: string
           workout_plan?: Json | null
         }
@@ -39,8 +41,77 @@ export type Database = {
           diet_plan?: Json | null
           id?: string
           motivation_quote?: string | null
+          profile_id?: string | null
           user_id?: string
           workout_plan?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fitness_plans_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "fitness_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fitness_profiles: {
+        Row: {
+          age: number | null
+          avatar_url: string | null
+          created_at: string
+          dietary_preference: string | null
+          fitness_goal: string | null
+          fitness_level: string | null
+          full_name: string | null
+          gender: string | null
+          height_cm: number | null
+          id: string
+          medical_history: string | null
+          profile_name: string
+          stress_level: string | null
+          updated_at: string
+          user_id: string
+          weight_kg: number | null
+          workout_location: string | null
+        }
+        Insert: {
+          age?: number | null
+          avatar_url?: string | null
+          created_at?: string
+          dietary_preference?: string | null
+          fitness_goal?: string | null
+          fitness_level?: string | null
+          full_name?: string | null
+          gender?: string | null
+          height_cm?: number | null
+          id?: string
+          medical_history?: string | null
+          profile_name: string
+          stress_level?: string | null
+          updated_at?: string
+          user_id: string
+          weight_kg?: number | null
+          workout_location?: string | null
+        }
+        Update: {
+          age?: number | null
+          avatar_url?: string | null
+          created_at?: string
+          dietary_preference?: string | null
+          fitness_goal?: string | null
+          fitness_level?: string | null
+          full_name?: string | null
+          gender?: string | null
+          height_cm?: number | null
+          id?: string
+          medical_history?: string | null
+          profile_name?: string
+          stress_level?: string | null
+          updated_at?: string
+          user_id?: string
+          weight_kg?: number | null
+          workout_location?: string | null
         }
         Relationships: []
       }

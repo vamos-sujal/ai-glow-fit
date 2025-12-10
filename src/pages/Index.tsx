@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Hero } from '@/components/landing/Hero';
 import { Features } from '@/components/landing/Features';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, User, Sparkles } from 'lucide-react';
+import { LogOut, User, Sparkles, Users } from 'lucide-react';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -43,8 +44,13 @@ const Index = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             {user ? (
               <>
+                <Button variant="ghost" onClick={() => navigate('/profiles')}>
+                  <Users className="w-4 h-4 mr-2" />
+                  Profiles
+                </Button>
                 <Button variant="ghost" onClick={() => navigate('/dashboard')}>
                   <User className="w-4 h-4 mr-2" />
                   Dashboard
