@@ -1,121 +1,90 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ProfileForm, ProfileData } from '@/components/onboarding/ProfileForm';
 import { WorkoutPlanCard } from '@/components/dashboard/WorkoutPlanCard';
 import { DietPlanCard } from '@/components/dashboard/DietPlanCard';
 import { VoicePlayerBrowser } from '@/components/dashboard/VoicePlayerBrowser';
 import { MotivationCard } from '@/components/dashboard/MotivationCard';
 import { AITipsCard } from '@/components/dashboard/AITipsCard';
 import { ExportButton } from '@/components/dashboard/ExportButton';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { ProfileInfoCard } from '@/components/dashboard/ProfileInfoCard';
 import { Button } from '@/components/ui/button';
-import { FitnessPlan, UserProfile } from '@/types/fitness';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { FitnessPlan, FitnessProfile } from '@/types/fitness';
 import { toast } from 'sonner';
-import { LogOut, RefreshCw, Loader2, Sparkles, ArrowLeft, User, Users } from 'lucide-react';
+import { LogOut, RefreshCw, Loader2, Sparkles, ArrowLeft, User } from 'lucide-react';
 
-type ViewState = 'loading' | 'onboarding' | 'generating' | 'dashboard';
+type ViewState = 'loading' | 'generating' | 'dashboard';
 
-export default function Dashboard() {
+export default function ProfileDetail() {
   const navigate = useNavigate();
+  const { profileId } = useParams<{ profileId: string }>();
   const { user, loading: authLoading, signOut } = useAuth();
   const [viewState, setViewState] = useState<ViewState>('loading');
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<FitnessProfile | null>(null);
   const [fitnessPlan, setFitnessPlan] = useState<FitnessPlan | null>(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/');
-    } else if (user) {
-      loadUserData();
+      navigate('/auth');
+    } else if (user && profileId) {
+      loadProfileData();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, profileId]);
 
-  const loadUserData = async () => {
-    if (!user) return;
+  const loadProfileData = async () => {
+    if (!user || !profileId) return;
 
     try {
       // Load profile
       const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
+        .from('fitness_profiles')
         .select('*')
+        .eq('id', profileId)
         .eq('user_id', user.id)
         .single();
 
-      if (profileError && profileError.code !== 'PGRST116') {
-        throw profileError;
-      }
+      if (profileError) throw profileError;
+      setProfile(profileData as FitnessProfile);
 
-      setProfile(profileData as UserProfile);
-
-      // Check if profile is complete
-      const isProfileComplete = profileData?.fitness_goal && profileData?.fitness_level;
-
-      if (!isProfileComplete) {
-        setViewState('onboarding');
-        return;
-      }
-
-      // Load existing fitness plan
-      const { data: planData, error: planError } = await supabase
+      // Load existing fitness plan for this profile
+      const { data: planData } = await supabase
         .from('fitness_plans')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('profile_id', profileId)
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
 
       if (planData) {
-      setFitnessPlan({
-        ...planData,
-        workout_plan: planData.workout_plan as unknown as FitnessPlan['workout_plan'],
-        diet_plan: planData.diet_plan as unknown as FitnessPlan['diet_plan'],
-      });
+        setFitnessPlan({
+          ...planData,
+          workout_plan: planData.workout_plan as unknown as FitnessPlan['workout_plan'],
+          diet_plan: planData.diet_plan as unknown as FitnessPlan['diet_plan'],
+        });
         setViewState('dashboard');
       } else {
-        // Generate plan for user with complete profile
-        await generatePlan(profileData as UserProfile);
+        // Generate plan for this profile
+        await generatePlan(profileData as FitnessProfile);
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
-      setViewState('onboarding');
+      console.error('Error loading profile data:', error);
+      toast.error('Failed to load profile');
+      navigate('/profiles');
     }
   };
 
-  const handleProfileSubmit = async (data: ProfileData) => {
-    if (!user) return;
-
-    try {
-      // Update profile
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update(data)
-        .eq('user_id', user.id);
-
-      if (updateError) throw updateError;
-
-      const updatedProfile = { ...profile, ...data, user_id: user.id } as UserProfile;
-      setProfile(updatedProfile);
-      
-      // Generate plan
-      await generatePlan(updatedProfile);
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      toast.error('Failed to save profile');
-    }
-  };
-
-  const generatePlan = async (userProfile: UserProfile) => {
-    if (!user) return;
+  const generatePlan = async (profileData: FitnessProfile) => {
+    if (!user || !profileId) return;
 
     setViewState('generating');
     
     try {
       const { data, error } = await supabase.functions.invoke('generate-fitness-plan', {
-        body: { profile: userProfile }
+        body: { profile: profileData }
       });
 
       if (error) throw error;
@@ -129,6 +98,7 @@ export default function Dashboard() {
         .from('fitness_plans')
         .insert({
           user_id: user.id,
+          profile_id: profileId,
           workout_plan: data.workout_plan,
           diet_plan: data.diet_plan,
           ai_tips: data.ai_tips,
@@ -149,7 +119,7 @@ export default function Dashboard() {
     } catch (error: any) {
       console.error('Error generating plan:', error);
       toast.error(error.message || 'Failed to generate plan');
-      setViewState('onboarding');
+      setViewState('dashboard');
     }
   };
 
@@ -177,18 +147,6 @@ export default function Dashboard() {
     );
   }
 
-  if (viewState === 'onboarding') {
-    return (
-      <div className="min-h-screen bg-background">
-        <ProfileForm
-          onSubmit={handleProfileSubmit}
-          onBack={() => navigate('/')}
-          initialData={profile || undefined}
-        />
-      </div>
-    );
-  }
-
   if (viewState === 'generating') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
@@ -205,7 +163,7 @@ export default function Dashboard() {
             <Sparkles className="w-8 h-8 text-primary" />
           </motion.div>
           <h2 className="font-display text-2xl font-bold mb-2">Creating Your Plan</h2>
-          <p className="text-muted-foreground">Our AI is crafting a personalized fitness journey just for you...</p>
+          <p className="text-muted-foreground">Our AI is crafting a personalized fitness journey for {profile?.profile_name}...</p>
         </motion.div>
       </div>
     );
@@ -217,21 +175,17 @@ export default function Dashboard() {
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/profiles')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Home
+              Profiles
             </Button>
           </div>
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={() => navigate('/profiles')}>
-              <Users className="w-4 h-4 mr-2" />
-              Profiles
-            </Button>
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary">
               <User className="w-4 h-4" />
-              <span className="text-sm">{profile?.full_name || user?.email}</span>
+              <span className="text-sm">{profile?.profile_name}</span>
             </div>
             <Button variant="outline" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
@@ -246,12 +200,12 @@ export default function Dashboard() {
         {/* Top bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="font-display text-3xl font-bold mb-1">Your Fitness Plan</h1>
+            <h1 className="font-display text-3xl font-bold mb-1">{profile?.profile_name}'s Plan</h1>
             <p className="text-muted-foreground">Personalized for your goals</p>
           </div>
           
           <div className="flex items-center gap-3">
-            {fitnessPlan && <ExportButton plan={fitnessPlan} userName={profile?.full_name || undefined} />}
+            {fitnessPlan && <ExportButton plan={fitnessPlan} userName={profile?.full_name || profile?.profile_name || undefined} />}
             <Button onClick={handleRegenerate} disabled={isRegenerating}>
               {isRegenerating ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -263,10 +217,22 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Profile Info */}
+        {profile && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <ProfileInfoCard profile={profile} />
+          </motion.div>
+        )}
+
         {/* Motivation */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
           className="mb-8"
         >
           <MotivationCard initialQuote={fitnessPlan?.motivation_quote} />
@@ -278,7 +244,7 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            transition={{ delay: 0.2 }}
             className="lg:col-span-2"
           >
             {fitnessPlan?.workout_plan && <WorkoutPlanCard plan={fitnessPlan.workout_plan} />}
@@ -290,7 +256,7 @@ export default function Dashboard() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.3 }}
             >
               {fitnessPlan && <VoicePlayerBrowser plan={fitnessPlan} />}
             </motion.div>
@@ -299,7 +265,7 @@ export default function Dashboard() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.4 }}
             >
               {fitnessPlan?.ai_tips && <AITipsCard tips={fitnessPlan.ai_tips} />}
             </motion.div>
@@ -309,7 +275,7 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.5 }}
             className="lg:col-span-2"
           >
             {fitnessPlan?.diet_plan && <DietPlanCard plan={fitnessPlan.diet_plan} />}
