@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Hero } from '@/components/landing/Hero';
@@ -9,16 +8,13 @@ import { LogOut, User, Sparkles } from 'lucide-react';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
 
-  const handleGetStarted = async () => {
+  const handleGetStarted = () => {
     if (user) {
       navigate('/dashboard');
     } else {
-      const { error } = await signInWithGoogle();
-      if (error) {
-        console.error('Sign in error:', error);
-      }
+      navigate('/auth');
     }
   };
 
