@@ -10,7 +10,7 @@ export function Hero({ onGetStarted }: HeroProps) {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden px-4">
       {/* Background effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,hsl(82_100%_50%/0.12),transparent_50%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.12),transparent_50%)]" />
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
       
@@ -57,7 +57,11 @@ export function Hero({ onGetStarted }: HeroProps) {
             <Dumbbell className="w-5 h-5 mr-2" />
             Start Your Journey
           </Button>
-          <Button variant="glass" size="xl">
+          <Button 
+            variant="glass" 
+            size="xl"
+            onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+          >
             <Target className="w-5 h-5 mr-2" />
             Learn More
           </Button>
