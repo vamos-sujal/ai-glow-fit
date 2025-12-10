@@ -36,8 +36,8 @@ const features = [
 
 export function Features() {
   return (
-    <section className="py-24 px-4 relative">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_50%,hsl(82_100%_50%/0.05),transparent_40%)]" />
+    <section id="features" className="py-24 px-4 relative">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_50%,hsl(var(--primary)/0.05),transparent_40%)]" />
       
       <div className="max-w-6xl mx-auto relative z-10">
         <motion.div
